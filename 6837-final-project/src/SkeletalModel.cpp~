@@ -1,0 +1,357 @@
+#include "SkeletalModel.h"
+
+#include <FL/Fl.H>
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <math.h>
+
+using namespace std;
+
+int MAX_BUFFER_SIZE = 1024;
+
+void SkeletalModel::load(const char *skeletonFile, const char *meshFile, const char *attachmentsFile)
+{
+	loadSkeleton(skeletonFile);
+
+	m_mesh.load(meshFile);
+	m_mesh.loadAttachments(attachmentsFile, m_joints.size());
+
+	computeBindWorldToJointTransforms();
+	updateCurrentJointToWorldTransforms();
+}
+
+void SkeletalModel::draw(Matrix4f cameraMatrix, bool skeletonVisible)
+{
+	// draw() gets called whenever a redraw is required
+	// (after an update() occurs, when the camera moves, the window is resized, etc)
+
+	m_matrixStack.clear();
+	m_matrixStack.push(cameraMatrix);
+
+	if( skeletonVisible )
+	{
+		drawJoints();
+
+		drawSkeleton();
+	}
+	else
+	{
+		// Clear out any weird matrix we may have been using for drawing the bones and revert to the camera matrix.
+		glLoadMatrixf(m_matrixStack.top());
+
+		// Tell the mesh to draw itself.
+		m_mesh.draw();
+	}
+
+	m_matrixStack.pop();
+}
+
+// Loads the skeleton from the file
+void SkeletalModel::loadSkeleton( const char* filename )
+{
+    ifstream file(filename);
+    if (file.is_open()) {
+	// sets up splitting strings by whitespace
+	char buffer[MAX_BUFFER_SIZE];
+	stringstream ss(buffer);
+	while (file.good()) {
+	    // takes in line and turns it into floats and the index
+	    string line;
+	    getline(file, line);
+	    ss.clear();
+	    ss << line;
+
+	    float x, y, z;
+	    int index;
+	    ss >> x >> y >> z;
+	    ss >> index;
+
+	    // creates the joint with its transform
+	    Joint* joint = new Joint();
+	    Matrix4f m;
+	    m.setCol( 0, Vector4f( 1.0, 0.0, 0.0, 0.0 ) );
+            m.setCol( 1, Vector4f( 0.0, 1.0, 0.0, 0.0 ) );
+            m.setCol( 2, Vector4f( 0.0, 0.0, 1.0, 0.0 ) );
+            m.setCol( 3, Vector4f( x, y, z, 1.0 ) );
+	    joint->transform = m;
+
+	    // deals with parent/child and root joint specifications
+	    if (index == -1) {
+		// sets root joint to be the root joint
+		m_rootJoint = joint;
+	    } else {
+		// might want to check for out of bound errors
+		Joint * parent = m_joints[index];
+		// add child to parent's list of child nodes
+		parent->children.push_back(joint);
+	    }	    
+	    m_joints.push_back(joint);
+	}
+    file.close();
+    }
+}
+
+// Recursively traverses the matrix of joints
+void SkeletalModel::recursiveJoints(Joint* curJoint) {
+    // transform matrix, push matrix, draw current joint
+    Matrix4f m;
+    m = curJoint->transform;
+    m_matrixStack.push(m);
+    glLoadMatrixf( m_matrixStack.top() );
+    glutSolidSphere( 0.025f, 12, 12 );
+
+    // draw kids
+    vector<Joint*> kids;
+    kids = curJoint->children;
+    if (kids.size() == 0) {
+	// untransform matrix
+	m_matrixStack.pop();
+    } else {
+	// recursively call method for each child, untransform matrix
+	for (int i = 0; i < kids.size(); i++) {
+	    recursiveJoints(kids[i]);
+	}
+	m_matrixStack.pop();
+    }
+}
+
+void SkeletalModel::drawJoints( )
+{
+	// Draw a sphere at each joint. You will need to add a recursive helper function to traverse the joint hierarchy.
+	//
+	// We recommend using glutSolidSphere( 0.025f, 12, 12 )
+	// to draw a sphere of reasonable size.
+	//
+	// You are *not* permitted to use the OpenGL matrix stack commands
+	// (glPushMatrix, glPopMatrix, glMultMatrix).
+	// You should use your MatrixStack class
+	// and use glLoadMatrix() before your drawing call.
+
+    recursiveJoints(m_rootJoint);
+    
+}
+
+// Recursively traverses the matrix of joints
+void SkeletalModel::recursiveBones(Joint* curJoint) {
+    // draw cubes
+    vector<Joint*> kids;
+    kids = curJoint->children;
+    if (kids.size() != 0) {
+        // transform matrix, push matrix
+        Matrix4f m;
+        m = curJoint->transform;
+        m_matrixStack.push(m);
+
+	// draw bone to each child, recursively call method for each child
+	for (int i = 0; i < kids.size(); i++) {
+	    // scale, translate, rotate, draw cube to child
+	    Vector3f boneVec = Vector3f(kids[i]->transform(0, 3), kids[i]->transform(1, 3), kids[i]->transform(2, 3));
+	    float distance;
+	    distance = boneVec.abs();
+
+	    Matrix4f scale;
+	    scale.setCol( 0, Vector4f( 0.05, 0.0, 0.0, 0.0 ) );
+            scale.setCol( 1, Vector4f( 0.0, 0.05, 0.0, 0.0 ) );
+            scale.setCol( 2, Vector4f( 0.0, 0.0, distance, 0.0 ) );
+            scale.setCol( 3, Vector4f( 0.0, 0.0, 0.0, 1.0 ) );
+
+	    Matrix4f translate;
+	    translate.setCol( 0, Vector4f( 1.0, 0.0, 0.0, 0.0 ) );
+            translate.setCol( 1, Vector4f( 0.0, 1.0, 0.0, 0.0 ) );
+            translate.setCol( 2, Vector4f( 0.0, 0.0, 1.0, 0.0 ) );
+            translate.setCol( 3, Vector4f( 0.0, 0.0, 0.5, 1.0 ) );
+
+	    // steps necessary to find the rotate matrix
+	    Vector3f z = boneVec.normalized();
+	    Vector3f y = Vector3f::cross(z, Vector3f(0.0, 0.0, 1.0)).normalized();
+	    Vector3f x = Vector3f::cross(y,z).normalized();
+
+	    Matrix4f rotate;
+	    rotate.setCol( 0, Vector4f(x, 0.0));
+            rotate.setCol( 1, Vector4f(y, 0.0 ) );
+            rotate.setCol( 2, Vector4f(z, 0.0 ) );
+            rotate.setCol( 3, Vector4f( 0.0, 0.0, 0.0, 1.0 ) );
+
+	    m_matrixStack.push(rotate);
+	    m_matrixStack.push(scale);
+	    m_matrixStack.push(translate);
+
+
+	    glLoadMatrixf( m_matrixStack.top() );
+            glutSolidCube( 1.0f );
+
+	    // pops the temp matrices
+	    m_matrixStack.pop();
+	    m_matrixStack.pop();
+	    m_matrixStack.pop();
+
+	    recursiveBones(kids[i]);
+	}
+
+	m_matrixStack.pop();
+    }
+}
+
+void SkeletalModel::drawSkeleton( )
+{
+	// Draw boxes between the joints. You will need to add a recursive helper function to traverse the joint hierarchy.
+
+    recursiveBones(m_rootJoint);
+    // gets rid of the camera matrix
+    m_matrixStack.pop();
+}
+
+// commented this out for safety when starting this method over from scratch
+/**
+void SkeletalModel::setJointTransform(int jointIndex, float rX, float rY, float rZ)
+{
+	// Set the rotation part of the joint's transformation matrix based on the passed in Euler angles.
+    rX= rX / 90.0;
+    rY= rY / 90.0;
+    rZ= rZ / 90.0;
+    
+    // apply rotations in order x * y * z
+    Matrix4f eulerRotation = Matrix4f(
+	cos(rY)*cos(rZ), -1.0*cos(rY)*sin(rZ), sin(rY), 0.0,
+	cos(rX)*sin(rZ) + cos(rZ)*sin(rX)*sin(rY), cos(rX)*cos(rZ) - sin(rZ)*sin(rX)*sin(rY), -1*cos(rY)*sin(rX), 0.0,
+	sin(rX)*sin(rZ) - cos(rZ)*cos(rX)*sin(rY), cos(rZ)*sin(rX) + cos(rX)*sin(rY)*sin(rZ), cos(rX)*cos(rY), 0.0,
+	0.0, 0.0, 0.0, 1.0
+    );
+
+    m_joints[jointIndex]->transform = m_joints[jointIndex]->transform*eulerRotation;
+}
+*/
+
+
+void SkeletalModel::setJointTransform(int jointIndex, float rX, float rY, float rZ)
+{
+	// Set the rotation part of the joint's transformation matrix based on the passed in Euler angles.
+    
+    // apply rotations in order x * y * z
+    Matrix4f mX = Matrix4f( 1.0, 0.0, 0.0, 0.0,
+			     0.0, cos(rX), -1.0*sin(rX), 0.0,
+			     0.0, sin(rX), cos(rX), 0.0,
+			     0.0, 0.0, 0.0, 1.0);
+
+    Matrix4f mY = Matrix4f( cos(rY), 0.0, sin(rY), 0.0,
+			     0.0, 1.0, 0.0, 0.0,
+			     -1.0*sin(rY), 0.0, cos(rY), 0.0,
+			     0.0, 0.0, 0.0, 1.0);
+
+    Matrix4f mZ = Matrix4f( cos(rZ), -1.0*sin(rZ), 0.0, 0.0,
+			     sin(rZ), cos(rZ), 0.0, 0.0,
+			     0.0, 0.0, 1.0, 0.0,
+			     0.0, 0.0, 0.0, 1.0);
+
+    Matrix4f rotMatrix = mZ*mY*mX;
+    m_joints[jointIndex]->transform = m_joints[jointIndex]->transform*rotMatrix;
+}
+
+/**
+void SkeletalModel::setJointTransform(int jointIndex, float rX, float rY, float rZ)
+{
+	// Set the rotation part of the joint's transformation matrix based on the passed in Euler angles.
+    
+    // apply rotations in order x * y * z
+    m_joints[jointIndex]->transform = m_joints[jointIndex]->transform*Matrix4f::rotateX(rX);
+    m_joints[jointIndex]->transform = m_joints[jointIndex]->transform*Matrix4f::rotateY(rY);
+    m_joints[jointIndex]->transform = m_joints[jointIndex]->transform*Matrix4f::rotateZ(rZ);
+
+} */
+
+// Recursively traverses the matrix of joints
+void SkeletalModel::recursiveBindWorld(Joint* curJoint) {
+    // transform matrix, push matrix, draw current joint
+    Matrix4f m;
+    m = curJoint->transform;
+    m_matrixStack.push(m);
+    // if there are errors they might be here
+    curJoint->bindWorldToJointTransform = m_matrixStack.top().inverse();
+//    curJoint->currentJointToWorldTransform = m_matrixStack.top().inverse();
+
+    // draw kids
+    vector<Joint*> kids;
+    kids = curJoint->children;
+    if (kids.size() == 0) {
+	// untransform matrix
+	m_matrixStack.pop();
+    } else {
+	// recursively call method for each child, untransform matrix
+	for (int i = 0; i < kids.size(); i++) {
+	    recursiveBindWorld(kids[i]);
+	}
+	m_matrixStack.pop();
+    }
+}
+
+void SkeletalModel::computeBindWorldToJointTransforms()
+{
+	// 2.3.1. Implement this method to compute a per-joint transform from
+	// world-space to joint space in the BIND POSE.
+	//
+	// Note that this needs to be computed only once since there is only
+	// a single bind pose.
+	//
+	// This method should update each joint's bindWorldToJointTransform.
+	// You will need to add a recursive helper function to traverse the joint hierarchy.
+    recursiveBindWorld(m_rootJoint);
+}
+
+// Recursively traverses the matrix of joints
+void SkeletalModel::recursiveUpdateCurrent(Joint* curJoint) {
+    // transform matrix, push matrix, draw current joint
+    Matrix4f m;
+    m = curJoint->transform;
+    m_matrixStack.push(m);
+    curJoint->currentJointToWorldTransform = m_matrixStack.top();
+
+    // draw kids
+    vector<Joint*> kids;
+    kids = curJoint->children;
+    if (kids.size() == 0) {
+	// untransform matrix
+	m_matrixStack.pop();
+    } else {
+	// recursively call method for each child, untransform matrix
+	for (int i = 0; i < kids.size(); i++) {
+	    recursiveUpdateCurrent(kids[i]);
+	}
+	m_matrixStack.pop();
+    }
+}
+
+void SkeletalModel::updateCurrentJointToWorldTransforms()
+{
+	// 2.3.2. Implement this method to compute a per-joint transform from
+	// joint space to world space in the CURRENT POSE.
+	//
+	// The current pose is defined by the rotations you've applied to the
+	// joints and hence needs to be *updated* every time the joint angles change.
+	//
+	// This method should update each joint's currentJointToWorldTransform.
+	// You will need to add a recursive helper function to traverse the joint hierarchy.
+    m_matrixStack.clear();
+    recursiveUpdateCurrent(m_rootJoint);
+}
+
+void SkeletalModel::updateMesh()
+{
+	// 2.3.2. This is the core of SSD.
+	// Implement this method to update the vertices of the mesh
+	// given the current state of the skeleton.
+	// You will need both the bind pose world --> joint transforms.
+	// and the current joint --> world transforms.
+
+    for (int i = 0; i < m_mesh.currentVertices.size(); i++) {
+	m_mesh.currentVertices[i] = Vector3f( 0.0, 0.0 ,0.0);
+	Vector4f finalPos = Vector4f(0.0, 0.0, 0.0, 1.0);
+	for (int j = 0; j < m_joints.size() - 1; j++) {
+	    finalPos = finalPos + m_mesh.attachments[i][j] * (m_joints[j+1]->currentJointToWorldTransform * (m_joints[j+1]->bindWorldToJointTransform * Vector4f(m_mesh.bindVertices[i], 1.0)));
+	}
+	m_mesh.currentVertices[i] = Vector3f(finalPos[0], finalPos[1], finalPos[2]);
+    }
+    m_mesh.draw();
+}
+

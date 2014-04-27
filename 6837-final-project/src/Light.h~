@@ -1,0 +1,287 @@
+// 6.837 Final Project
+// Miren Bamforth - Fall 2013
+
+#ifndef LIGHT_H
+#define LIGHT_H
+
+#include <Vector3f.h>
+#include <FL/gl.h>
+#include <string.h>
+#include <vector>
+
+
+// skeleton class for inheritance
+class Light
+{
+public:
+
+    Light() {    }
+    virtual ~Light() {    }
+
+    GLfloat* getPos();
+    GLfloat* getColor();
+    GLfloat* getSpotDir();
+    GLfloat* getSpotCutoff();
+
+    void setSpotDir(float pan, float tilt);
+    void setSpotBeamAngle(float degree);
+    void setSpotColor(std::vector<float> col);
+    bool isOn();
+    void toggleOn();
+};
+
+// houselights provide ambient light when the spotlights are off
+class HouseLight : public Light
+{
+public:
+    // sets up the light
+    HouseLight(GLfloat col[], GLfloat position[], GLfloat spotDirection[], GLfloat spotCut[])
+    {
+	memcpy(color, col, sizeof(color));
+	memcpy(pos, position, sizeof(pos));
+	memcpy(spotDir, spotDirection, sizeof(spotDir));
+	memcpy(spotCutoff, spotCut, sizeof(spotCutoff));
+	on = true;
+    }
+
+    // for deletion
+    ~HouseLight() { }
+
+    // returns position
+    GLfloat* getPos() {
+	return pos;
+    }
+
+    // returns the color of the light
+    GLfloat* getColor() {
+	return color;
+    }
+
+    // returns the direction of the light
+    GLfloat* getSpotDir() {
+	return spotDir;
+    }
+
+    // returns the beam angle of the light
+    GLfloat* getSpotCutoff() {
+	return spotCutoff;
+    }
+
+    // sets the direction of the spot given a pan and a tilt
+    void setSpotDir(float pan, float tilt) {
+	// do some math
+    }
+
+    // sets the beam angle of the light
+    void setSpotBeamAngle(float degree) {
+	//clamp angle between 90 and 180
+	if (degree < 90.0) {
+	    degree= 90.0;
+	} else if (degree > 180.0) {
+	    degree = 180.0;
+	}
+	GLfloat deg[] = {degree};
+	memcpy(spotCutoff, deg, sizeof(spotCutoff));
+    }
+
+    // sets the color of the light
+    void setSpotColor(std::vector<float> col) {
+	GLfloat cols[] = {col[0], col[1], col[2], col[3]};
+	memcpy(color, cols, sizeof(color));
+    }
+
+    bool isOn() {
+	return on;
+    }
+
+    void toggleOn() {
+	on = !on;
+    }
+
+private:
+
+    GLfloat pos[4];
+    GLfloat color[4];
+    GLfloat spotDir[3];
+    GLfloat spotCutoff[1];
+    bool on;
+
+};
+
+// Ellipsoidal lights are like ERS
+class EllipsoidalLight : public Light
+{
+public:
+
+    EllipsoidalLight(GLfloat col[], GLfloat position[], GLfloat spotDirection[], GLfloat spotCut[])
+    {
+	memcpy(color, col, sizeof(color));
+	memcpy(pos, position, sizeof(pos));
+	memcpy(spotDir, spotDirection, sizeof(spotDir));
+	memcpy(spotCutoff, spotCut, sizeof(spotCutoff));
+	on = true;
+    }
+
+    ~EllipsoidalLight()
+    {
+
+    }
+
+    // returns position
+    GLfloat* getPos() {
+	return pos;
+    }
+
+    // returns the color of the light
+    GLfloat* getColor() {
+	return color;
+    }
+
+    // returns the direction of the light
+    GLfloat* getSpotDir() {
+	return spotDir;
+    }
+
+    // returns the beam angle of the light
+    GLfloat* getSpotCutoff() {
+	return spotCutoff;
+    }
+
+    // sets the direction of the spot given a pan and a tilt
+    void setSpotDir(float pan, float tilt) {
+	float x = cos(pan);
+	float y = tilt;
+	float z = sin(pan);
+	
+	GLfloat newDir[] = {x, y, z};
+	memcpy(spotDir, newDir, sizeof(newDir));
+    }
+
+    // sets the beam angle of the light
+    void setSpotBeamAngle(float degree) {
+	// clamp angle at 19, 26, 36, 50
+	// everything divided by two because of the definition of glcutoff
+	if (degree < 23.0) {
+	    degree = 19.0/2.0;
+	} else if (degree < 31.0) {
+	    degree = 26.0/2.0;
+	} else if (degree < 43.0) {
+	    degree = 36.0/2.0;
+	} else {
+	    degree = 50.0/2.0;
+	}
+	GLfloat deg[] = {degree};
+	memcpy(spotCutoff, deg, sizeof(spotCutoff));
+    }
+
+    // sets the color of the light
+    void setSpotColor(std::vector<float> col) {
+	GLfloat cols[] = {col[0], col[1], col[2], col[3]};
+	memcpy(color, cols, sizeof(color));
+    }
+
+    bool isOn() {
+	return on;
+    }
+
+    void toggleOn() {
+	on = !on;
+    }
+
+private:
+
+    GLfloat pos[4];
+    GLfloat color[4];
+    GLfloat spotDir[3];
+    GLfloat spotCutoff[1];
+    bool on;
+
+};
+
+// Parabolic light are liek PARs
+class ParabolicLight : public Light
+{
+public:
+
+    ParabolicLight(GLfloat col[], GLfloat position[], GLfloat spotDirection[], GLfloat spotCut[])
+    {
+	memcpy(color, col, sizeof(color));
+	memcpy(pos, position, sizeof(pos));
+	memcpy(spotDir, spotDirection, sizeof(spotDir));
+	memcpy(spotCutoff, spotCut, sizeof(spotCutoff));
+	on = true;
+    }
+
+    ~ParabolicLight()
+    {
+
+    }
+
+    // returns position
+    GLfloat* getPos() {
+	return pos;
+    }
+
+    // returns the color of the light
+    GLfloat* getColor() {
+	return color;
+    }
+
+    // returns the direction of the light
+    GLfloat* getSpotDir() {
+	return spotDir;
+    }
+
+    // returns the beam angle of the light
+    GLfloat* getSpotCutoff() {
+	return spotCutoff;
+    }
+
+    // sets the direction of the spot given a pan and a tilt
+    // TODO
+    void setSpotDir(float pan, float tilt) {
+	// do some math
+	// set direction here
+    }
+
+    // sets the beam angle of the light to NFL, MFL, WFL
+    // TODO
+    void setSpotBeamAngle(GLfloat degree) {
+	// figure out how to do lenses
+	if (degree < 30.0) {
+	    degree = 20.0;
+	} else if (degree < 50.0) {
+	    degree = 40.0;
+	} else {
+	    degree = 60.0;
+	}
+	GLfloat deg[] = {degree};
+	memcpy(spotCutoff, deg, sizeof(spotCutoff));
+    }
+
+    // sets the color of the light
+    // TODO
+    void setSpotColor(std::vector<float> col) {
+	GLfloat cols[] = {col[0], col[1], col[2], col[3]};
+	memcpy(color, cols, sizeof(color));
+    }
+
+    bool getOn() {
+	return on;
+    }
+
+    void toggleOn() {
+	on = !on;
+    }
+
+private:
+
+    GLfloat pos[4];
+    GLfloat color[4];
+    GLfloat spotDir[3];
+    GLfloat spotCutoff[1];
+    bool on;
+
+};
+
+#endif // LIGHT_H

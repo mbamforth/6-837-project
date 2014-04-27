@@ -1,0 +1,110 @@
+#include "Mesh.h"
+#include <algorithm>
+
+using namespace std;
+
+int MAX_BUFFER_SIZE2 = 1024;
+
+void Mesh::load( const char* filename )
+{
+    // 2.1.1. load() should populate bindVertices, currentVertices, and faces
+    ifstream file(filename);
+    if (file.is_open()) {
+	// sets up splitting strings by whitespace
+	char buffer[MAX_BUFFER_SIZE2];
+	stringstream ss(buffer);
+	while (file.good()) {
+	    string line;
+	    getline(file, line);
+	    ss.clear();
+	    ss << line;
+	    string s;
+	    ss >> s;
+	    if (s == "v") {
+	        // fill bindVertices
+	        float temp1, temp2, temp3;
+	        ss >> temp1 >> temp2 >> temp3;
+	        bindVertices.push_back(Vector3f(temp1, temp2, temp3));
+	    } else if (s == "f") {
+	        Tuple3u tup;
+		int num1, num2, num3;
+		ss >> num1 >> num2 >> num3;
+		tup[0] = num1;
+		tup[1] = num2;
+		tup[2] = num3;
+
+	        faces.push_back(tup);
+	    } else {
+	        // do nothing
+	    }
+	}
+	file.close();
+    } 
+
+    // make a copy of the bind vertices as the current vertices
+    currentVertices = bindVertices;
+}
+
+void Mesh::draw()
+{
+	// Since these meshes don't have normals
+	// be sure to generate a normal per triangle.
+	// Notice that since we have per-triangle normals
+	// rather than the analytical normals from
+	// assignment 1, the appearance is "faceted".
+
+    glBegin(GL_TRIANGLES);
+    for (int j = 0; j < faces.size(); j++) {
+	// these are the 3 vertices
+	int a = faces[j][0];
+	int b = faces[j][1];
+	int c = faces[j][2];
+	// this creates the normal
+	Vector3f aVec = currentVertices[a-1];
+	Vector3f bVec = currentVertices[b-1];
+	Vector3f cVec = currentVertices[c-1];
+	Vector3f ab = aVec - bVec;
+	Vector3f ac = aVec - cVec;
+	Vector3f normal = Vector3f::cross(ab, ac).normalized();
+	normal = normal;
+
+        glNormal3d(normal[0], normal[1], normal[2]);
+        glVertex3d(currentVertices[a-1][0], currentVertices[a-1][1], currentVertices[a-1][2]);
+        glVertex3d(currentVertices[b-1][0], currentVertices[b-1][1], currentVertices[b-1][2]);
+	glVertex3d(currentVertices[c-1][0], currentVertices[c-1][1], currentVertices[c-1][2]);
+cout << "drawing face " << j << endl;
+    }
+
+    glEnd();
+}
+
+void Mesh::loadAttachments( const char* filename, int numJoints )
+{
+	// 2.2. Implement this method to load the per-vertex attachment weights
+	// this method should update m_mesh.attachments
+
+    ifstream file(filename);
+    if (file.is_open()) {
+	// sets up splitting strings by whitespace
+	char buffer[MAX_BUFFER_SIZE2];
+	stringstream ss(buffer);
+	int lineNum = 0;
+	while (file.good()) {
+	    string line;
+	    getline(file, line);
+	    ss.clear();
+	    ss << line;
+
+	    float weight;
+	    vector< float > tempVec;
+	    while (ss >> weight) {
+		tempVec.push_back(weight);
+	    }	    
+	    attachments.push_back(tempVec);
+
+	    lineNum = lineNum + 1;
+	}
+    file.close();
+    }
+
+}

@@ -1,0 +1,51 @@
+Final Project Documentation
+Miren Bamforth 11/30
+
+- I decided to take source code from assignment #2 
+- Files in src:
+bitmap.cpp // done (unchanged)
+bitmap.h  // done (unchanged)
+camera.cpp // done (unchanged)
+camera.h // done (unchanged)
+extra.h // done (unchanged)
+Joint.cpp // unnecessary
+Joint.h // unnecessary
+Light.h // mostly done
+main.cpp // done
+MatrixStack.cpp // done (unchanged)
+MatrixStack.h // done (unchanged)
+Mesh.cpp // unnecessary
+Mesh.h // unnecessary
+modelerapp.cpp // done (mostly unchanged)
+modelerapp.h //  done (mostly unchanged)
+modelerui.cpp // done (unchanged)
+modelerui.h // done (unchanged)
+ModelerView.cpp // mostly done
+ModelerView.h // mostly done
+SetDesign.cpp // done
+SetDesign.h // done
+SkeletalModel.cpp // unnecessary
+SkeletalModel.h // unnecessary
+tuple.h // unnecessary
+
+- Tasks that are left:
+DONE 1) Create set, check that it displays with the given lighting 
+DONE 1)a) Check that set moves correctly with camera movements (use old assignment 2 code)
+DONEish, positioning is hard 2) Implement basic spotlights, test
+DONE 3) Add keyboard functions to toggle on/off individual lights and all lights
+DONEish, doesn't slide evenly 4) Fill in slider functions for adjustment of light RGB
+DONE 5) Fill in slider functions for adjustment of light pan/tilt/
+DONE as in, scratching fresnels6) Attempt fresnel lights if there's time
+6) Make better looking set of ~10 total spots and washes
+7) Do presentation and paper stuff
+
+Presentation Prep
+1) Get screenshots
+2) Capture video for pan/tilt and color
+3) Prep slides on google docs slideshow
+4) Anything else required
+
+Paper
+1) Find out about extension
+2) Write it in given format
+3) Add in screenshots

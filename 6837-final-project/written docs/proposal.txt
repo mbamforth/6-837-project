@@ -1,0 +1,12 @@
+6.837 - Final Project Proposal
+Miren Bamforth 11/15
+
+For my final project, I would like to implement a set of lights that can model theatrical lighting instruments. There are numerous types of theatrical lighting instruments which cast light in particular ways, with particular beams patterns, hot spots, and beam angles. I would use these lights to render a scene from a show that I have worked on in real life; I would compare the actual photos of the theatrical lighting on the set to the rendered versions of the scenes. The set would be reduced to simple shapes such as cubes, and the focus of the work would be on the accurate and realistic implementation of the beams of light that are cast by the different instruments.  
+
+Depending on how complex this turns out to be, I would also implement controls or command line arguments for panning, tilting, color rotation, pattern rotation, and other such additional features. I will be working by myself due to some inconvenient time restrictions that I do not want to impose on a partner, so I am not sure what an appropriate, manageable scope is for the project; I will probably work as far through the list of extra features as possible and stop when the project is due.
+
+There are two primary ways that come to mind for implementing the project.
+1) The majority of the project could be adjustment of the assignment 4/5 code. A lot of the adjustments would come from extending the Light class significantly. The scenes would be rendered from the audience's point of view only.
+2) Alternatively, the code from assignment 2 or 3 could be extended such that the code creates a 3D model which can be easily viewed from different angles. This would also involve rending the actual lighting instruments and adjusting them when they are titled or panned with user controls. However lights were used in those psets would be overwritten by a new Light class modeled off of the Light class from assignments 4/5.
+
+I am leaning towards the second method since a 3D model would be more interesting, in my opinion. There are some 3D rendering technologies used in theatrical lighting already, so the quality and scope of these existing programs would be a good guide in terms of having an example to check my renderings against.
